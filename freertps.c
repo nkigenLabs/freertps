@@ -4,6 +4,8 @@
 #include "freertps/udp.h"
 #include "freertps/sub.h"
 
+bool g_freertps_init_complete;
+
 void freertps_perish_if(bool b, const char *msg)
 {
   if (b)
@@ -22,6 +24,7 @@ void freertps_create_sub(const char *topic_name,
   // become smarter to handle when different (or multiple?) physical layer
   // are initialized
   frudp_add_user_sub(topic_name, type_name, msg_cb);
+  //g_rtps_psm.create_sub(topic_name, type
 }
 
 frudp_pub_t *freertps_create_pub(const char *topic_name,
@@ -39,4 +42,10 @@ bool freertps_publish(frudp_pub_t *pub,
 {
   // todo: other physical layers...
   return frudp_publish_user_msg(pub, msg, msg_len);
+}
+
+void freertps_start(void)
+{
+  // todo: other physical layers...
+  frudp_disco_start();
 }

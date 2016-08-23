@@ -7,6 +7,12 @@
 #include <limits.h>
 #include <string.h>
 #include <stdio.h>
+#include "freertps/psm.h"
+
+const struct rtps_psm g_rtps_psm_udp =
+{
+  .init = frudp_init
+};
 
 ////////////////////////////////////////////////////////////////////////////
 // global constants
@@ -40,14 +46,16 @@ void frudp_tx_acknack(const frudp_guid_prefix_t *guid_prefix,
 //////////////////////////////////////////////////////////////////////////
 
 
-//#define RX_VERBOSE
+//#define EXCESSIVELY_VERBOSE_MSG_RX
 
 bool frudp_rx(const uint32_t src_addr, const uint16_t src_port,
               const uint32_t dst_addr, const uint16_t dst_port,
               const uint8_t *rx_data  , const uint16_t rx_len)
 {
-#ifdef RX_VERBOSE
-  FREERTPS_INFO("freertps rx %d bytes\n", rx_len);
+#ifdef EXCESSIVELY_VERBOSE_MSG_RX
+  printf("===============================================\n");
+  printf("freertps rx %d bytes\n", rx_len);
+  printf("===============================================\n");
 #endif
   /*
   struct in_addr ina;
@@ -57,14 +65,14 @@ bool frudp_rx(const uint32_t src_addr, const uint16_t src_port,
   const frudp_msg_t *msg = (frudp_msg_t *)rx_data;
   if (msg->header.magic_word != 0x53505452) // todo: care about endianness
     return false; // it wasn't RTPS. no soup for you.
-#ifdef RX_VERBOSE
+#ifdef EXCESSIVELY_VERBOSE_MSG_RX
   FREERTPS_INFO("rx proto ver %d.%d\n",
                 msg->header.pver.major,
                 msg->header.pver.minor);
 #endif
   if (msg->header.pver.major != 2)
     return false; // we aren't cool enough to be oldschool
-#ifdef RX_VERBOSE
+#ifdef EXCESSIVELY_VERBOSE_MSG_RX
   FREERTPS_INFO("rx vendor 0x%04x = %s\n",
                 (unsigned)ntohs(msg->header.vid),
                 frudp_vendor(ntohs(msg->header.vid)));
@@ -75,24 +83,12 @@ bool frudp_rx(const uint32_t src_addr, const uint16_t src_port,
   rcvr.src_vid = msg->header.vid;
 
   bool our_guid = true;
-  for (int i = 0; i < 12; i++)
+  for (int i = 0; i < 12 && our_guid; i++)
     if (msg->header.guid_prefix.prefix[i] !=
         g_frudp_config.guid_prefix.prefix[i])
       our_guid = false;
   if (our_guid)
     return true; // don't process our own messages
-
-  {
-#ifdef RX_VERBOSE
-    const uint8_t *p = msg->header.guid_prefix.prefix;
-    printf("RTPS sender guid prefix = %02x%02x%02x%02x:"
-                                     "%02x%02x%02x%02x:"
-                                     "%02x%02x%02x%02x\n",
-         p[0], p[1], p[2], p[3],
-         p[4], p[5], p[6], p[7],
-         p[8], p[9], p[10], p[11]);
-#endif
-  }
 
   memcpy(rcvr.src_guid_prefix.prefix,
          msg->header.guid_prefix.prefix,
@@ -113,7 +109,7 @@ bool frudp_rx(const uint32_t src_addr, const uint16_t src_port,
 static bool frudp_rx_submsg(frudp_receiver_state_t *rcvr,
                             const frudp_submsg_t *submsg)
 {
-#ifdef RX_VERBOSE
+#ifdef EXCESSIVELY_VERBOSE_MSG_RX
   FREERTPS_INFO("rx submsg ID %d len %d\n",
                 submsg->header.id,
                 submsg->header.len);
@@ -348,7 +344,7 @@ static bool frudp_rx_heartbeat_frag(RX_MSG_ARGS)
 static bool frudp_rx_data(RX_MSG_ARGS)
 {
   frudp_submsg_data_t *data_submsg = (frudp_submsg_data_t *)submsg;
-#ifdef RX_VERBOSE
+#ifdef EXCESSIVELY_VERBOSE_MSG_RX
   FREERTPS_INFO("rx data flags = %d\n", 0x0f7 & submsg->header.flags);
 #endif
   // todo: care about endianness
@@ -370,7 +366,7 @@ static bool frudp_rx_data(RX_MSG_ARGS)
     frudp_parameter_list_item_t *item = (frudp_parameter_list_item_t *)inline_qos_start;
     while ((uint8_t *)item < submsg->contents + submsg->header.len)
     {
-#ifdef RX_VERBOSE
+#ifdef EXCESSIVELY_VERBOSE_MSG_RX
       FREERTPS_INFO("data inline QoS param 0x%x len %d\n", (unsigned)item->pid, item->len);
 #endif
       const frudp_parameterid_t pid = item->pid;
@@ -390,7 +386,7 @@ static bool frudp_rx_data(RX_MSG_ARGS)
 #ifdef VERBOSE_DATA
   printf("  DATA ");
   frudp_print_guid(&writer_guid);
-  printf(" => 0x%08x  : %d\n",
+  printf(" => 0x%08x  : %d\r\n",
          (unsigned)freertps_htonl(data_submsg->reader_id.u),
          (int)data_submsg->writer_sn.low);
 #endif
@@ -426,27 +422,13 @@ static bool frudp_rx_data(RX_MSG_ARGS)
          data_submsg->reader_id.u == g_frudp_entity_id_unknown.u))
     */
     num_matches_found++;
-    {
-      // update the max-received sequence number counter
-      if (data_submsg->writer_sn.low > match->max_rx_sn.low) // todo: 64-bit
-        match->max_rx_sn = data_submsg->writer_sn;
-      if (match->data_cb)
-        match->data_cb(rcvr, submsg, scheme, data);
-      if (match->msg_cb)
-      {
-        /*
-        int len = data_submsg->header.len - ((uint8_t *)data - (uint8_t *)data_submsg);
-        printf("    msg len = %d\n", len);
-        for (int i = 0; i < len; i++)
-        {
-          printf("%2x ", (unsigned)data[i]);
-          if (i % 8 == 7)
-            printf("\n");
-        }
-        */
-        match->msg_cb(data);
-      }
-    }
+    // update the max-received sequence number counter
+    if (data_submsg->writer_sn.low > match->max_rx_sn.low) // todo: 64-bit
+      match->max_rx_sn = data_submsg->writer_sn;
+    if (match->data_cb)
+      match->data_cb(rcvr, submsg, scheme, data);
+    if (match->msg_cb)
+      match->msg_cb(data);
   }
   if (!num_matches_found)
   {
@@ -480,27 +462,28 @@ static bool frudp_rx_data_frag(RX_MSG_ARGS)
   return true;
 }
 
-bool frudp_generic_init()
+bool frudp_generic_init(void)
 {
-  FREERTPS_INFO("frudp_generic_init()\n");
+  FREERTPS_INFO("frudp_generic_init()\r\n");
   frudp_part_create();
   frudp_add_mcast_rx(freertps_htonl(FRUDP_DEFAULT_MCAST_GROUP),
                      frudp_mcast_builtin_port());
   frudp_add_mcast_rx(freertps_htonl(FRUDP_DEFAULT_MCAST_GROUP),
                      frudp_mcast_user_port());
+  frudp_add_ucast_rx(frudp_ucast_builtin_port());
   frudp_add_ucast_rx(frudp_ucast_user_port());
   frudp_disco_init();
   return true;
 }
 
-uint16_t frudp_mcast_builtin_port()
+uint16_t frudp_mcast_builtin_port(void)
 {
   return FRUDP_PORT_PB +
          FRUDP_PORT_DG * g_frudp_config.domain_id +
          FRUDP_PORT_D0;
 }
 
-uint16_t frudp_ucast_builtin_port()
+uint16_t frudp_ucast_builtin_port(void)
 {
   return FRUDP_PORT_PB +
          FRUDP_PORT_DG * g_frudp_config.domain_id +
@@ -508,14 +491,14 @@ uint16_t frudp_ucast_builtin_port()
          FRUDP_PORT_PG * g_frudp_config.participant_id;
 }
 
-uint16_t frudp_mcast_user_port()
+uint16_t frudp_mcast_user_port(void)
 {
   return FRUDP_PORT_PB +
          FRUDP_PORT_DG * g_frudp_config.domain_id +
          FRUDP_PORT_D2;
 }
 
-uint16_t frudp_ucast_user_port()
+uint16_t frudp_ucast_user_port(void)
 {
   return FRUDP_PORT_PB +
          FRUDP_PORT_DG * g_frudp_config.domain_id +

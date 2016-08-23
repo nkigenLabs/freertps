@@ -9,10 +9,11 @@
 #define FRUDP_DEFAULT_MCAST_GROUP 0xefff0001
 //#define FRUDP_DOMAIN_ID  0
 
-#define FRUDP_MAX_PUBS 10
-#define FRUDP_MAX_SUBS 10
+#define FRUDP_MAX_PUBS 5
+#define FRUDP_MAX_SUBS 5
 #define FRUDP_MAX_READERS 50
 #define FRUDP_MAX_WRITERS 50
+#define FRUDP_DISCO_MAX_PARTS 50
 
 #define FRUDP_MAX_TOPIC_NAME_LEN 128
 #define FRUDP_MAX_TYPE_NAME_LEN  128
@@ -26,6 +27,7 @@ typedef struct
 } frudp_config_t;
 extern frudp_config_t g_frudp_config;
 
+#define VERBOSE_MSG_RX
 //#define VERBOSE_HEARTBEAT
 //#define VERBOSE_DATA
 //#define VERBOSE_ACKNACK

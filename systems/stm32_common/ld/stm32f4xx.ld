@@ -33,7 +33,6 @@ SECTIONS
     __fini_array_start = .;
     KEEP(*(SORT(.fini_array.*)))
     KEEP(*(.fini_array))
-    KEEP(*(SORT(.fini_array.*)))
     __fini_array_end = .;
     . = ALIGN(0x4);
     KEEP (*crtbegin.o(.ctors))

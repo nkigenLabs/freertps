@@ -1,8 +1,13 @@
 #include "freertps/freertps.h"
 #include "freertps/system.h"
 #include <stdlib.h>
+#if defined(__linux__)
 #include <malloc.h>
+#endif
 #include <execinfo.h>
+#include "freertps/psm.h"
+
+struct rtps_psm g_rtps_psm;
 
 /*
 #include <signal.h>
@@ -37,7 +42,7 @@ static void *freertps_malloc(size_t size, const void *caller)
   return mem;
 }
 
-void freertps_init_malloc_hook()
+void freertps_init_malloc_hook(void)
 {
   g_freertps_prev_malloc_hook = __malloc_hook;
   __malloc_hook = freertps_malloc;
@@ -45,14 +50,27 @@ void freertps_init_malloc_hook()
 void (*volatile __malloc_initialize_hook)(void) = freertps_init_malloc_hook;
 #endif
 
-void freertps_system_init()
+void freertps_system_init(void)
 {
   //__malloc_hook = freertps_malloc;
-  frudp_init();
+  /*
+  if (getenv("FREERTPS_SERIAL_GROUP"))
+  {
+    // udpv4 multicast group of the "simulated serial comms" group
+    const char *serial_group = getenv("FREERTPS_SERIAL_GROUP");
+    rtps_ser_init(serial_group);
+  }
+  else
+    */
+    g_rtps_psm = g_rtps_psm_udp;
+
+  g_rtps_psm.init();
+
   //signal(SIGINT, sigint_handler); // let ROS2 handle this now
+  g_freertps_init_complete = true;
 }
 
-bool freertps_system_ok()
+bool freertps_system_ok(void)
 {
   return true; //!g_done;
 }

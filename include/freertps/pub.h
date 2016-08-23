@@ -4,6 +4,7 @@
 #include "freertps/udp.h"
 #include "freertps/id.h"
 #include "freertps/config.h"
+#include "freertps/part.h"
 #include <stdint.h>
 
 typedef struct
@@ -46,8 +47,15 @@ void frudp_publish(frudp_pub_t *publication,
                    frudp_submsg_data_t *submsg);
 
 bool frudp_publish_user_msg(frudp_pub_t *publication,
-                            const uint8_t *msg,
-                            const uint32_t msg_len);
+    const uint8_t *msg, const uint32_t msg_len);
+
+bool frudp_publish_user_msg_frag(
+    frudp_pub_t *publication,
+    const uint32_t frag_num, 
+    const uint8_t *frag, 
+    const uint32_t frag_len,
+    const uint32_t frag_used_len,
+    const uint32_t msg_len);
 
 frudp_pub_t *frudp_pub_from_writer_id(const frudp_eid_t id);
 
@@ -59,5 +67,7 @@ frudp_pub_t *frudp_create_user_pub(const char *topic_name,
                                    const char *type_name);
 
 void frudp_add_writer(const frudp_writer_t *writer);
+
+void frudp_send_sedp_msgs(frudp_part_t *part);
 
 #endif

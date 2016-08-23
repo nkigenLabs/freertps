@@ -32,18 +32,21 @@ void frudp_add_reader(const frudp_reader_t *match)
 
   g_frudp_readers[g_frudp_num_readers] = *match;
   g_frudp_num_readers++;
+  /*
   printf("add_reader(");
   frudp_print_guid(&match->writer_guid);
-  printf(" => %08x)\n", (unsigned)freertps_htonl(match->reader_eid.u));
+  printf(" => %08x)\r\n", (unsigned)freertps_htonl(match->reader_eid.u));
+  */
 }
 
 void frudp_add_user_sub(const char *topic_name,
                         const char *type_name,
                         freertps_msg_cb_t msg_cb)
 {
-  printf("frudp_add_user_sub(%s, %s)\n", topic_name, type_name);
   frudp_eid_t sub_eid = frudp_create_user_id
                           (FRUDP_ENTITY_KIND_USER_READER_NO_KEY);
+  printf("frudp_add_user_sub(%s, %s) on EID 0x%08x\r\n",
+      topic_name, type_name, (unsigned)freertps_htonl(sub_eid.u));
   frudp_sub_t sub;
   // for now, just copy the pointers. maybe in the future we can/should have
   // an option for storage of various kind (static, malloc, etc.) for copies.
@@ -54,7 +57,7 @@ void frudp_add_user_sub(const char *topic_name,
   sub.data_cb = NULL;
   sub.reliable = false;
   frudp_add_sub(&sub);
-  sedp_publish_sub(&sub);
+  //sedp_publish_sub(&sub); // can't do this yet; spdp hasn't started bcast
 }
 
 void frudp_add_sub(const frudp_sub_t *s)
@@ -62,18 +65,20 @@ void frudp_add_sub(const frudp_sub_t *s)
   if (g_frudp_num_subs >= FRUDP_MAX_SUBS - 1)
     return; // no room. sorry.
   g_frudp_subs[g_frudp_num_subs] = *s;
+  printf("sub %d: reader_eid = 0x%08x\r\n",
+      g_frudp_num_subs, freertps_htonl((unsigned)s->reader_eid.u));
   g_frudp_num_subs++;
   //frudp_subscribe(s->entity_id, g_frudp_entity_id_unknown, NULL, s->msg_cb);
 }
 
-void frudp_print_readers()
+void frudp_print_readers(void)
 {
   for (unsigned i = 0; i < g_frudp_num_readers; i++)
   {
     frudp_reader_t *match = &g_frudp_readers[i];
     printf("    sub %d: writer = ", (int)i); //%08x, reader = %08x\n",
     frudp_print_guid(&match->writer_guid);
-    printf(" => %08x\n", (unsigned)freertps_htonl(match->reader_eid.u));
+    printf(" => %08x\r\n", (unsigned)freertps_htonl(match->reader_eid.u));
   }
 }
 

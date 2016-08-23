@@ -1,4 +1,4 @@
-#include "console.h"
+#include "metal/console.h"
 #include "pin.h"
 #include <stdbool.h>
 
@@ -13,7 +13,7 @@ USART_TypeDef *g_console_usart = USART6;
 
 static volatile bool g_console_init_complete = false;
 
-void console_init()
+void console_init(void)
 {
   RCC->APB2ENR |= RCC_APB2ENR_USART6EN;
   pin_set_alternate_function(GPIOC, PORTC_RX_PIN, 8);
@@ -23,6 +23,7 @@ void console_init()
   // we want 1 megabit. do this with mantissa=5 and fraction (sixteenths)=4
   g_console_usart->BRR  = (((uint16_t)5) << 4) | 4;
   g_console_usart->CR1 |=  USART_CR1_UE;
+  g_console_init_complete = true;
 }
 
 void console_send_block(const uint8_t *buf, uint32_t len)

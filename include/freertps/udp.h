@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "freertps/id.h"
+//#include "freertps/psm.h"
 
 /////////////////////////////////////////////////////////////////////
 // TYPES
@@ -16,7 +17,7 @@ typedef struct
   uint8_t minor;
 } frudp_pver_t; // protocol version
 
-typedef struct
+typedef struct frudp_header
 {
   uint32_t magic_word; // RTPS in ASCII
   frudp_pver_t pver; // protocol version
@@ -30,19 +31,21 @@ typedef struct
   uint8_t submsgs[];
 } frudp_msg_t;
 
-#define FRUDP_FLAGS_LITTLE_ENDIAN 0x01
-#define FRUDP_FLAGS_INLINE_QOS    0x02
-#define FRUDP_FLAGS_DATA_PRESENT  0x04
+#define FRUDP_FLAGS_LITTLE_ENDIAN      0x01
+#define FRUDP_FLAGS_INLINE_QOS         0x02
+#define FRUDP_FLAGS_DATA_PRESENT       0x04
 
-#define FRUDP_FLAGS_ACKNACK_FINAL 0x02
+#define FRUDP_FLAGS_ACKNACK_FINAL      0x02
 
-#define FRUDP_SUBMSG_ID_ACKNACK   0x06
-#define FRUDP_SUBMSG_ID_HEARTBEAT 0x07
-#define FRUDP_SUBMSG_ID_INFO_TS   0x09
-#define FRUDP_SUBMSG_ID_INFO_DEST 0x0e
-#define FRUDP_SUBMSG_ID_DATA      0x15
+#define FRUDP_SUBMSG_ID_ACKNACK        0x06
+#define FRUDP_SUBMSG_ID_HEARTBEAT      0x07
+#define FRUDP_SUBMSG_ID_INFO_TS        0x09
+#define FRUDP_SUBMSG_ID_INFO_DEST      0x0e
+#define FRUPG_SUBMSG_ID_HEARTBEAT_FRAG 0x13
+#define FRUDP_SUBMSG_ID_DATA           0x15
+#define FRUDP_SUBMSG_ID_DATA_FRAG      0x16
 
-typedef struct
+typedef struct frudp_submsg_header
 {
   uint8_t id;
   uint8_t flags;
@@ -96,6 +99,21 @@ typedef struct
   frudp_sn_t writer_sn;
   uint8_t data[];
 } __attribute__((packed)) frudp_submsg_data_t;
+
+typedef struct frudp_submsg_data_frag
+{
+  struct frudp_submsg_header header;
+  uint16_t extraflags;
+  uint16_t octets_to_inline_qos;
+  frudp_eid_t reader_id;
+  frudp_eid_t writer_id;
+  frudp_sn_t writer_sn;
+  uint32_t fragment_starting_number;
+  uint16_t fragments_in_submessage;
+  uint16_t fragment_size;
+  uint32_t sample_size;
+  uint8_t data[];
+} __attribute__((packed)) frudp_submsg_data_frag_t;
 
 typedef struct
 {
@@ -169,11 +187,11 @@ typedef struct
 // FUNCTIONS
 /////////////////////////////////////////////////////////////////////
 
-bool frudp_init();
-void frudp_fini();
+bool frudp_init(void);
+void frudp_fini(void);
 
-bool frudp_generic_init();
-bool frudp_init_participant_id();
+bool frudp_generic_init(void);
+bool frudp_init_participant_id(void);
 
 bool frudp_add_mcast_rx(const uint32_t group,
                         const uint16_t port); //,
@@ -196,11 +214,11 @@ bool frudp_tx(const uint32_t dst_addr,
               const uint8_t *tx_data,
               const uint16_t tx_len);
 
-uint16_t frudp_ucast_builtin_port();
-uint16_t frudp_mcast_builtin_port();
-uint16_t frudp_ucast_user_port();
-uint16_t frudp_mcast_user_port();
-uint16_t frudp_spdp_port();
+uint16_t frudp_ucast_builtin_port(void);
+uint16_t frudp_mcast_builtin_port(void);
+uint16_t frudp_ucast_user_port(void);
+uint16_t frudp_mcast_user_port(void);
+uint16_t frudp_spdp_port(void);
 
 const char *frudp_ip4_ntoa(const uint32_t addr);
 
@@ -213,5 +231,7 @@ frudp_msg_t *frudp_init_msg(frudp_msg_t *buf);
             list_item = (frudp_parameter_list_item_t *) \
                         (((uint8_t *)list_item) + 4 + list_item->len); \
           } while (0)
+
+extern const struct rtps_psm g_rtps_psm_udp;
 
 #endif

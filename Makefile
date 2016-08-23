@@ -1,14 +1,13 @@
-SYSTEMS=native-posix               \
-        stm32f7_disco-metal        \
-				stm32f4_disco-metal        
-#				wandrr_rs485_router-metal
-
-APPS=listener talker
+SYSTEMS ?= native-posix                \
+           stm32f7_disco-metal         \
+           stm32f4_disco-metal         \
+           stm3240g_eval-metal         \
+           samv71_xplained_ultra-metal
 
 .PHONY: all clean $(SYSTEMS)
 all: utils/bin/console $(SYSTEMS)
 
-BUILT_SYSTEMS:=$(shell ls build)
+BUILT_SYSTEMS:=$(filter-out msgs,$(shell ls build))
 BUILT_APPS:=$(foreach SYSTEM, $(BUILT_SYSTEMS), $(foreach APP, $(shell ls build/$(SYSTEM)/apps), $(APP)-$(SYSTEM)))
 PROGRAM_TARGETS:=$(foreach APP, $(BUILT_APPS), program-$(APP))
 GDB_TARGETS:=$(foreach APP, $(BUILT_APPS), gdb-$(APP))
@@ -26,7 +25,7 @@ build/%:
 	mkdir -p $@
 
 clean:
-	-rm -rf build*
+	-rm -rf build
 
 OPENOCD=/usr/local/bin/openocd -f stm32/openocd/stlink-v2-1.cfg -f stm32/openocd/stm32f7-disco.cfg 
 IMAGE=build.stm32/examples/listener.bin
@@ -35,7 +34,11 @@ IMAGE_START=0x08000000
 list-apps:
 	@echo $(PROGRAM_TARGETS)
 
-.PHONY: $(PROGRAM_TARGETS) $(RESET_TARGETS) $(GDB_SERVER_TARGETS) $(GDB_TARGETS)
+genmsg:
+	r2/mega_genmsg.py
+
+.PHONY: $(PROGRAM_TARGETS) $(RESET_TARGETS) $(GDB_SERVER_TARGETS) $(GDB_TARGETS) list-apps genmsg
+
 $(PROGRAM_TARGETS) : 
 	scripts/task_runner program $(subst program-,,$@)
 

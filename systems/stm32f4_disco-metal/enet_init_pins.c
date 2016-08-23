@@ -1,8 +1,6 @@
 #include <stdio.h>
 #include "pin.h"
-#include "delay.h"
-
-// TODO: look up pin assignments on STM32f4-disco board
+#include "metal/delay.h"
 
 #define PORTA_ETH_REFCLK 1
 #define PORTE_PHY_RESET  2
@@ -22,9 +20,9 @@
 
 // PHY: LAN8720
 
-void enet_init_pins()
+void enet_mac_init_pins(void)
 {
-  printf("enet_init_pins()\r\n");
+  printf("enet_mac_init_pins()\r\n");
 
   pin_set_alternate_function(GPIOA, PORTA_ETH_REFCLK, AF_ENET);
   pin_set_alternate_function(GPIOA, PORTA_ETH_MDIO  , AF_ENET);
